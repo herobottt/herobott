@@ -32,6 +32,10 @@ def test_lesson_from_url_only_generic_words():
     assert main._lesson_from_url("https://api.hero.study/qr/code-active") is None
 
 
+def test_lesson_from_url_hero_qr_path_is_generic():
+    # Hero QR: /v1/q-r/code-active?url=... — "q r" dars nomi bo'lib qolmasin
+    assert main._lesson_from_url("https://api.newuzbekistan.hero.study/v1/q-r/code-active?url=abc") is None
+
 def test_lesson_from_url_query_param():
     assert main._lesson_from_url("https://api.hero.study/scan?lesson=Fizika%20A") == "Fizika A"
 

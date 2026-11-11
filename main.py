@@ -69,7 +69,7 @@ WEBHOOK_SECRET = (os.getenv("WEBHOOK_SECRET") or "").strip() or (
     hashlib.sha256(f"herobot-webhook:{BOT_TOKEN}".encode()).hexdigest()[:40] if BOT_TOKEN else "")
 WEBHOOK_HEADER_SECRET = hashlib.sha256(f"herobot-hdr:{WEBHOOK_SECRET}".encode()).hexdigest()[:48]   # faqat harf/raqam (Telegram talabi)
 ADMIN_ID = int(os.getenv("ADMIN_ID") or 0) 
-raw_url = (os.getenv("WEBAPP_URL") or os.getenv("RENDER_EXTERNAL_URL") or "").strip().rstrip('/')   # Render o'zi RENDER_EXTERNAL_URL beradi
+raw_url = (os.getenv("WEBAPP_URL") or os.getenv("RAILWAY_PUBLIC_DOMAIN") or os.getenv("RENDER_EXTERNAL_URL") or "").strip().rstrip('/')   # Railway: RAILWAY_PUBLIC_DOMAIN, Render: RENDER_EXTERNAL_URL avtomatik
 WEBAPP_URL = f"https://{raw_url.replace('https://', '').replace('http://', '')}" if raw_url else ""
 PORT = int(os.getenv("PORT") or 8080)
 
@@ -226,6 +226,8 @@ _GENERIC_PATH_WORDS = {"scan", "check", "verify", "mark", "attend", "attendance"
                        "qr", "validate", "log", "v1", "v2", "api", "lang", "en", "uz", "ru",
                        "code", "active", "code-active", "code_active", "codeactive"}
 
+_GENERIC_NORM = {re.sub(r"[-_]+", "", w) for w in _GENERIC_PATH_WORDS}   # 'q-r' / 'q_r' / 'qr' bir xil umumiy so'z hisoblansin
+
 def _lesson_from_url(url):
     """QR javobida ism topilmasa, URL'dan foydali bo'lak ajratib olamiz — 'check'/'scan' kabi umumiy
     REST so'zlarini emas, aynan darsni ajratib turadigan qismni (query param yoki path segment)."""
@@ -237,7 +239,7 @@ def _lesson_from_url(url):
             if vals and vals[0].strip(): return unquote(vals[0]).strip()[:80]
         segs = [unquote(s) for s in parsed.path.strip("/").split("/") if s]
         for seg in reversed(segs):
-            if seg.lower() in _GENERIC_PATH_WORDS or seg.isdigit() and len(seg) <= 2: continue
+            if seg.lower() in _GENERIC_PATH_WORDS or re.sub(r"[-_]+", "", seg.lower()) in _GENERIC_NORM or seg.isdigit() and len(seg) <= 2: continue
             cleaned = re.sub(r"[-_]+", " ", seg).strip()
             if cleaned: return cleaned[:80]
         return None   # faqat umumiy so'zlar qolsa — noto'g'ri nom ('code active') yozmaymiz, tarixda "—" chiqadi
