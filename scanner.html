@@ -595,6 +595,11 @@
   .header { flex-wrap: wrap; gap: 10px 8px; }
   .header-title { flex: 1 1 150px; }
   .header > div:last-child { margin-left: auto; }
+  .gd { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .gd-f { background: rgba(244,114,182,.16); color: #F9A8D4; }
+  .gd-m { background: rgba(56,189,248,.16); color: #7DD3FC; }
+  .gd-row-f td:first-child { box-shadow: inset 3px 0 0 #F472B6; }
+  .gd-row-m td:first-child { box-shadow: inset 3px 0 0 #38BDF8; }
 </style>
 </head>
 <body>
@@ -776,6 +781,7 @@
 
   <div class="tab-row">
     <button class="tab-btn active-tab" onclick="showAdminSection('secUsers', this)">👥 Userlar</button>
+    <button class="tab-btn" onclick="showAdminSection('secStud', this)">🧑‍🎓 Talabalar</button>
     <button class="tab-btn" onclick="showAdminSection('secPaid', this)">💎 Pullik rejim</button>
     <button class="tab-btn" onclick="showAdminSection('secPass',  this)">🔐 Parollar</button>
     <button class="tab-btn" onclick="showAdminSection('secQr', this)">🔳 QR kodlar</button>
@@ -817,6 +823,14 @@
     <div id="qrCount" class="rp-note" style="margin-bottom:8px"></div>
     <div id="qrList" class="qr-list"></div>
   </div>
+  <div id="secStud" class="admin-section">
+    <div id="studKpi" class="rp-kpis"></div>
+    <div id="studGender" class="rp-chips"></div>
+    <div id="studCourse" class="rp-chips"></div>
+    <input class="inp" id="studQ" placeholder="Qidirish: email, ism, kod yoki Telegram" oninput="studSet('q', this.value)" style="margin-bottom:12px">
+    <div id="studBody"></div>
+  </div>
+
   <div id="secPass" class="admin-section"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Egasi</th><th>Ism Familya</th><th>ID</th><th>Email</th><th>Parol</th></tr></thead><tbody id="adminPassList"></tbody></table></div></div>
   <div id="secHealth" class="admin-section">
     <div class="rp-period" style="margin-bottom:12px"><b>🩺 Akkaunt salomatligi</b><span>Token holati va so'nggi skanerlar bo'yicha muammoli akkauntlar. Muammo 2 tekshiruv (≈1 soat) davom etsa, egasiga bot orqali xabar boradi.</span></div>
@@ -1008,6 +1022,7 @@
     document.getElementById(sectionId).classList.add('active');
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
     if (btn) btn.classList.add('active-tab');
+    if (sectionId === 'secStud') loadStudents();
     if (sectionId === 'secQr') loadQr();
     if (sectionId === 'secSched') loadSchedules();
     if (sectionId === 'secLessons') loadLessons();
@@ -2240,6 +2255,40 @@
   /* ===== 🩺 Salomatlik (admin) ===== */
   const HL = { ok: ['✅ Sog\'lom', 'ok'], idle: ['💤 Faol emas', 'mid'], failing: ['⚠️ Ketma-ket kirmayapti', 'mid'], login_error: ['❌ Login/parol xato', 'no'], no_token: ['⛔ Tokensiz', 'no'] };
   let _hlAll = false;
+  /* ===== Talabalar: jins (emailda '@' dan oldingi harf 'a' = qiz) va kurs (Student ID dastlabki 2 raqami = qabul yili) ===== */
+  let _stud = { all: [], g: 'all', c: 'all', q: '' };
+  async function loadStudents() {
+    const box = document.getElementById('studBody');
+    box.innerHTML = '<div class="empty-box">Yuklanmoqda...</div>';
+    try {
+      const d = await (await fetch('/api/admin/students', { headers: getHeaders() })).json();
+      if (d.status !== 'success') { box.innerHTML = `<div class="sch-err">${esc(d.message || 'Xatolik')}</div>`; return; }
+      _stud.all = d.students || []; renderStudents();
+    } catch (e) { box.innerHTML = '<div class="sch-err">Ulanishda xatolik</div>'; }
+  }
+  function studSet(k, v) { _stud[k] = v; renderStudents(); }
+  function renderStudents() {
+    const all = _stud.all, q = _stud.q.trim().toLowerCase();
+    const girls = all.filter(a => a.gender === 'f').length, boys = all.filter(a => a.gender === 'm').length;
+    const kpi = (v, l, c) => `<div class="rp-kpi ${c || ''}"><b>${v}</b><span>${l}</span></div>`;
+    document.getElementById('studKpi').innerHTML = kpi(all.length, 'Jami') + kpi(girls, '👧 Qizlar') + kpi(boys, '👦 O\'g\'illar');
+    const gchip = (k, l) => `<button class="rp-chip ${_stud.g === k ? 'on' : ''}" onclick="studSet('g','${k}')">${l}</button>`;
+    document.getElementById('studGender').innerHTML = gchip('all', 'Hammasi') + gchip('f', `👧 Qizlar (${girls})`) + gchip('m', `👦 O'g'illar (${boys})`);
+    const courses = [...new Set(all.map(a => a.course))].sort((x, y) => (x ?? 99) - (y ?? 99));
+    const cchip = (k, l) => `<button class="rp-chip ${_stud.c === k ? 'on' : ''}" onclick="studSet('c','${k}')">${l}</button>`;
+    document.getElementById('studCourse').innerHTML = cchip('all', 'Barcha kurs') + courses.map(c => cchip(String(c), c == null ? 'Noma\'lum' : c + '-kurs (' + all.filter(a => a.course === c).length + ')')).join('');
+    const f = all.filter(a => (_stud.g === 'all' || a.gender === _stud.g) && (_stud.c === 'all' || String(a.course) === _stud.c)
+      && (!q || [a.email, a.full_name, a.student_id, ...(a.owners || [])].join(' ').toLowerCase().includes(q)));
+    f.sort((a, b) => (a.course ?? 99) - (b.course ?? 99) || (a.gender === b.gender ? 0 : a.gender === 'f' ? -1 : 1) || a.email.localeCompare(b.email));
+    const box = document.getElementById('studBody');
+    if (!f.length) { box.innerHTML = '<div class="empty-box">Hech narsa topilmadi</div>'; return; }
+    const gb = a => a.gender === 'f' ? '<span class="gd gd-f">👧 Qiz</span>' : a.gender === 'm' ? '<span class="gd gd-m">👦 O\'g\'il</span>' : '—';
+    box.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Jins / kurs</th><th>Talaba va Telegram</th><th>Kod</th></tr></thead><tbody>`
+      + f.map(a => `<tr class="gd-row-${a.gender || 'x'}"><td>${gb(a)}<div style="margin-top:4px;font-size:11.5px;color:var(--ink-md);white-space:nowrap">${a.course ? a.course + '-kurs' + (a.year ? ` (${a.year})` : '') : '—'}</div></td>`
+        + `<td><b>${a.full_name ? esc(a.full_name) : '—'}</b><div style="font-size:11.5px;color:var(--ink-md)">${esc(a.email)}</div><div style="font-size:11.5px;color:var(--ink-md);margin-top:2px">💬 ${(a.owners || []).map(esc).join(', ') || '—'}</div></td><td>${a.student_id ? esc(a.student_id) : '—'}</td></tr>`).join('')
+    + `</tbody></table></div><div style="margin-top:8px;font-size:11.5px;color:var(--ink-lt)">${f.length} ta akkaunt</div>`;
+  }
+
   async function loadHealth() {
     const box = document.getElementById('hlBody');
     box.innerHTML = '<div class="empty-box">Tekshirilmoqda...</div>';

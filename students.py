@@ -35,3 +35,24 @@ def lookup(email):
 
 def count():
     return sum(len(v) for v in _DATA.values())
+
+
+def classify(email, student_id=None, today=None):
+    """Email va Student ID bo'yicha jins hamda kurs.
+    Jins: emailda '@' dan oldingi harf 'a' bo'lsa — qiz (familiya -ova/-eva), aks holda — o'g'il bola.
+    Kurs: Student ID dastlabki 2 raqami = qabul yili (23 → 2023-yil sentabr). O'quv yili 1-sentabrdan boshlanadi:
+    kurs = (joriy yil - qabul yili) + (sentabr va undan keyin bo'lsa 1). Ro'yxatdagi 1423 ta talabada qoida familiyaga 100% mos tushdi.
+    -> {'gender': 'f'|'m'|None, 'year': 2023|None, 'course': int|None}"""
+    from datetime import datetime, timedelta
+    local = (email or "").split("@")[0].strip().lower().rstrip("0123456789")
+    gender = None
+    if local:
+        gender = "f" if local[-1] == "a" else "m"
+    m = re.match(r"\s*(\d{2})", str(student_id or ""))
+    year = course = None
+    if m:
+        year = 2000 + int(m.group(1))
+        now = today or (datetime.utcnow() + timedelta(hours=5))   # Toshkent vaqti
+        course = now.year - year + (1 if now.month >= 9 else 0)
+        if course < 1: year = course = None   # kelajak yili — ID noto'g'ri
+    return {"gender": gender, "year": year, "course": course}

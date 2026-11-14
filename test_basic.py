@@ -443,3 +443,19 @@ def test_lesson_reminders_switch(monkeypatch):
     for v in ("0", "false", "OFF"):
         monkeypatch.setenv("LESSON_REMINDERS", v)
         assert notify.reminders_enabled() is False
+
+
+# ---------------------------------------------------------------- jins va kurs (students.classify)
+def test_classify_gender_and_course():
+    from datetime import datetime
+    import students
+    nov = datetime(2026, 11, 14)
+    g = students.classify("a.karimova@newuu.uz", "230123", nov)
+    assert g["gender"] == "f" and g["year"] == 2023 and g["course"] == 4
+    b = students.classify("a.karimov@newuu.uz", "250123", nov)
+    assert b["gender"] == "m" and b["course"] == 2
+    # sentabrgacha o'quv yili hali yangilanmagan
+    assert students.classify("x.yusupov@newuu.uz", "250123", datetime(2026, 5, 1))["course"] == 1
+    assert students.classify("x.yusupov@newuu.uz", "22B1234", nov)["course"] == 5   # '22B1234' formati ham
+    assert students.classify("x.yusupov@newuu.uz", None, nov)["course"] is None
+    assert students.classify("a.karimova7@newuu.uz", "230123", nov)["gender"] == "f"   # oxiridagi raqam hisobga olinmaydi

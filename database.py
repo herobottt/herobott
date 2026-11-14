@@ -507,6 +507,19 @@ async def search_accounts(q, limit=40):
     if order is not None: out.sort(key=lambda x: order.index(x["email"]))
     return out
 
+async def get_students_overview():
+    """Admin: barcha Hero akkauntlar — email, ism, Student ID (kod), ulangan Telegram userlar (to'liq ro'yxat). Parol/token QAYTMAYDI."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_ACC_BASE_SQL + "GROUP BY lower(a.email) ORDER BY lower(a.email)")
+    out = []
+    for r in rows:
+        st = students.lookup(r["email"]) or {}
+        sid = r["student_id"] or st.get("student_id")
+        out.append({"email": r["email"], "full_name": r["full_name"] or st.get("full_name"), "student_id": sid,
+                    "owners": list(r["owners"]), "token_ok": bool(r["token_ok"]),
+                    **students.classify(r["email"], sid)})
+    return out
+
 async def get_account_detail(email):
     """Admin: bitta akkaunt bo'yicha profil + hisob + darslar + yo'l turlari + so'nggi 200 yozuv. Parol/token QAYTMAYDI. Topilmasa None."""
     email = (email or "").strip().lower()

@@ -1376,6 +1376,11 @@ async def admin_report(request):
     rep = await build_scan_report(request.query.get("from", ""), request.query.get("to", ""))
     return web.json_response({"status": "success", **rep}, dumps=lambda o: json.dumps(o, ensure_ascii=False, default=str))
 
+async def admin_students(request):
+    u_id, role = verify_token(request)
+    if not u_id or role != "super_admin": return web.json_response({"status": "error", "message": "Ruxsat yo'q"}, status=403)
+    return web.json_response({"status": "success", "students": await db.get_students_overview()}, dumps=lambda o: json.dumps(o, ensure_ascii=False, default=str))
+
 async def admin_report_send(request):
     """Hisobotni Excel qilib adminning Telegram chatiga yuboradi."""
     u_id, role = verify_token(request)
@@ -2140,7 +2145,7 @@ async def main():
     app.router.add_get("/api/admin/transcripts", admin_transcripts); app.router.add_get("/api/admin/transcript", admin_transcript_detail); app.router.add_post("/api/admin/transcript_refresh", admin_transcript_refresh); app.router.add_get("/api/admin/transcript_file", admin_transcript_file); app.router.add_post("/api/admin/transcript_send", admin_transcript_send)
     app.router.add_get("/api/admin/jokes", admin_jokes); app.router.add_post("/api/admin/jokes_import", admin_jokes_import); app.router.add_post("/api/admin/jokes_update", admin_jokes_update); app.router.add_post("/api/admin/jokes_delete", admin_jokes_delete); app.router.add_post("/api/admin/jokes_send", admin_jokes_send)
     extras.register(app, {"verify_token": verify_token, "verify_hero_account": verify_hero_account, "spawn_schedule": _spawn_schedule, "bot": bot})
-    app.router.add_get("/api/admin/report", admin_report); app.router.add_post("/api/admin/report_send", admin_report_send)
+    app.router.add_get("/api/admin/students", admin_students); app.router.add_get("/api/admin/report", admin_report); app.router.add_post("/api/admin/report_send", admin_report_send)
     app.router.add_get("/api/admin/acct_search", admin_acct_search); app.router.add_get("/api/admin/acct_detail", admin_acct_detail)
     app.router.add_get("/api/admin/companions", admin_companions); app.router.add_post("/api/admin/companions", admin_companions_save); app.router.add_get("/api/admin/lessons", admin_lessons); app.router.add_get("/api/admin/lessons_table", admin_lessons_table); app.router.add_post("/api/admin/lessons_toggle", admin_lessons_toggle); app.router.add_get("/api/admin/schedules", admin_schedules); app.router.add_get("/api/admin/schedule", admin_schedule_detail); app.router.add_post("/api/admin/schedule_refresh", admin_schedule_refresh)
 
