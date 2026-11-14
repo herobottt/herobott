@@ -1274,7 +1274,7 @@ async def build_scan_report(date_from, date_to):
     since, until = d1 - TASHKENT_OFFSET, d2 + timedelta(days=1) - TASHKENT_OFFSET
     rows = await db.get_scan_report_rows(since, until)
     scans, days, scanners, lessons, accounts = [], {}, {}, {}, {}
-    tot_ok = tot_all = dup = 0
+    tot_ok = tot_all = dup = expired = 0
     durations = []
     for r in rows:
         items = db._jsonish(r.get("details")) or []
@@ -1282,6 +1282,8 @@ async def build_scan_report(date_from, date_to):
         ok_n, all_n = int(r.get("success_count") or 0), int(r.get("total_count") or 0)
         lesson = r.get("lesson") or "—"
         if ok_n == 0 and (lesson.endswith(" · avto") or lesson.endswith(" · hamroh")): continue   # avto-yuborishdagi 'kirmadi' yozuvlari skaner emas
+        if ok_n == 0 and items and all(isinstance(i, dict) and i.get("reason") == "qr_invalid" for i in items):
+            expired += 1; continue   # Hero: "QR Code not found" — QR eskirgan; hech qaysi dars urinishi bo'lmagan, xato foiziga qo'shilmaydi
         scanner = r.get("login") or "—"
         day = (r["scanned_at"] + TASHKENT_OFFSET).strftime("%d.%m.%Y")
         tot_ok += ok_n; tot_all += all_n
@@ -1304,7 +1306,7 @@ async def build_scan_report(date_from, date_to):
                       "duration": round(float(r.get("duration") or 0), 1), "items": clean,
                       "kind": ("auto" if str(lesson).endswith("· avto") else "manual")})
     summary = {"scans": len(scans), "scanners": len(scanners), "accounts": len(accounts), "ok": tot_ok, "total": tot_all,
-               "failed": max(0, tot_all - tot_ok), "duplicates": dup, "rate": round(tot_ok * 100 / tot_all) if tot_all else 0,
+               "failed": max(0, tot_all - tot_ok), "duplicates": dup, "expired_qr": expired, "rate": round(tot_ok * 100 / tot_all) if tot_all else 0,
                "avg_duration": round(sum(durations) / len(durations), 1) if durations else 0,
                "first": scans[-1]["time"] if scans else None, "last": scans[0]["time"] if scans else None,
                "date_from": d1.strftime("%Y-%m-%d"), "date_to": d2.strftime("%Y-%m-%d"), "generated": _fmt_tk(datetime.utcnow())}

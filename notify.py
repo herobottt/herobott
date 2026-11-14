@@ -7,6 +7,7 @@ Fon vazifalar (hammasi bir martalik "once" kalit bilan takrorlanmaydi, qayta ish
 Buyruqlar: /davomat /hazil /sozlamalar /til  (+ /suhbat — friends.py)
 """
 import asyncio
+import os
 import hashlib
 import html
 import logging
@@ -184,7 +185,14 @@ async def send_keyed(key, tg_id, text, kb=None):
 
 # ----------------------------------------------------------------- ⏰ dars va 📝 imtihon eslatmalari
 
+def reminders_enabled():
+    """Dars oldidan eslatma umumiy yoqilganmi? Railway'da LESSON_REMINDERS=0 qo'yilsa — hammaga o'chiriladi."""
+    return os.getenv("LESSON_REMINDERS", "1").strip().lower() not in ("0", "false", "off", "no")
+
+
 async def reminder_tick():
+    if not reminders_enabled():
+        return
     now = stats.now_local()
     today = now.strftime("%Y-%m-%d")
     due = []
