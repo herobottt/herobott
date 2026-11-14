@@ -433,3 +433,13 @@ def test_run_nudge_custom_text_is_escaped():
     finally:
         for o, n, v in olds: setattr(o, n, v)
     assert sent[0] == "&lt;b&gt;salom&lt;/b&gt; &amp; rahmat"
+
+
+# ---------------------------------------------------------------- dars oldidan eslatma umumiy o'chirgichi
+def test_lesson_reminders_switch(monkeypatch):
+    import notify
+    monkeypatch.delenv("LESSON_REMINDERS", raising=False)
+    assert notify.reminders_enabled() is True
+    for v in ("0", "false", "OFF"):
+        monkeypatch.setenv("LESSON_REMINDERS", v)
+        assert notify.reminders_enabled() is False
